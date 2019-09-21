@@ -24,6 +24,9 @@ speedCnt = 1
 selZone = [0, 0, 0, 0]
 selZoneHand = [0, 0, 0, 0]
 manOverride = [0, 0, 0, 0]
+spaceState = False
+spaceArr = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+spaceCtr = 0
 cpuUse = 0
 cpuClk = 0
 memUse1 = 0
@@ -39,7 +42,7 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(22, GPIO.OUT) # relais 1 FrontDoor
 GPIO.setup(23, GPIO.OUT) # relais 2 PixelDoor
-GPIO.setup(24, GPIO.OUT) # relais 3
+GPIO.setup(24, GPIO.OUT) # relais 3 DockLight
 GPIO.setup(25, GPIO.OUT) # relais 4
 GPIO.output(22, GPIO.HIGH)
 GPIO.output(23, GPIO.HIGH)
@@ -209,7 +212,53 @@ while not done:
                                     pixelDoorTime = pygame.time.get_ticks()
                                     
     screen.fill(BLACK)
-
+    
+    #
+    # Check spaceState
+    #
+    
+    
+    connError2 = False
+    
+    URL2get = "https://spacestate.pixelbar.nl/spacestate.php"
+    
+    try:
+        r2 = requests.get(URL2get, timeout=0.5)
+    
+    except: #except requests.exceptions.Timeout:
+        connError2 = True
+        door = 0
+        
+    if not connError2:
+        responseState = r2.json()
+        
+        spaceCtr += 1
+        if spaceCtr > 9:
+            spaceCtr = 0
+            
+        if responseState['state'] == 'open':
+            spaceArr[spaceCtr] = 1
+        else:
+            spaceArr[spaceCtr] = 0
+    
+    tempState = 0
+    for i in range(len(spaceArr)):
+        if spaceArr[i] == 1:
+            tempState += 1
+    
+    if tempState > 8:
+        text = font.render("Space is Open", False, GREEN)
+        spaceState = True
+    else:
+        text = font.render("Space is Closed", False, RED)
+        spaceState = False
+    screen.blit(text, [750, 10])
+    
+    if spaceState:
+        GPIO.output(24, GPIO.LOW)
+    else:
+        GPIO.output(24, GPIO.HIGH)
+    
     #
     # If a mousebutton is pressed check is an action is required
     #
@@ -338,9 +387,7 @@ while not done:
 
         except requests.exceptions.Timeout:
             connError = True
-            errCnt += 1
-            print("# of errors: " + str(errCnt))
-
+            
         if not connError:
             connError = False
             response = r.json()
@@ -776,4 +823,8 @@ while not done:
     my_clock.tick(30)
 
 # on exit
+GPIO.output(22, GPIO.HIGH)
+GPIO.output(23, GPIO.HIGH)
+GPIO.output(24, GPIO.HIGH)
+GPIO.output(25, GPIO.HIGH)
 pygame.quit()

@@ -5,7 +5,7 @@ import os
 import socket
 import psutil
 import datetime
-#import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 from random import randint
 
 pygame.init()
@@ -37,18 +37,16 @@ deg_sym = '°'
 timeNow = 0
 timeLast = 0
 
-"""
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(22, GPIO.OUT) # relais 1 FrontDoor
 GPIO.setup(23, GPIO.OUT) # relais 2 PixelDoor
 GPIO.setup(24, GPIO.OUT) # relais 3 DockLight
-GPIO.setup(25, GPIO.OUT) # relais 4
+GPIO.setup(25, GPIO.OUT) # relais 4 Spare
 GPIO.output(22, GPIO.HIGH)
 GPIO.output(23, GPIO.HIGH)
 GPIO.output(24, GPIO.HIGH)
 GPIO.output(25, GPIO.HIGH)
-"""
 
 frontDoorTrig = False
 frontDoorTimer = 5000
@@ -86,7 +84,7 @@ screen = pygame.display.set_mode(size, pygame.NOFRAME)
 pygame.display.flip()
 my_clock = pygame.time.Clock()
 pygame.display.set_caption("PixelbarManagementSystem")
-#pygame.mouse.set_visible(False)
+pygame.mouse.set_visible(False)
 
 font = pygame.font.SysFont('Arial', 50, False, False)
 
@@ -318,7 +316,7 @@ def drawDoor():
     text = font.render("Pixelbar", False, GREEN)
     screen.blit(text, [x + 200, y + 350])
 
-    #5
+    #
     # Draw temperature
     #
 
@@ -425,7 +423,7 @@ def controlOutputs():
     global frontDoorTrig
     global pixelDoorTrig
     global spaceState
-    """
+
     # 
     # Control doors
     #
@@ -448,8 +446,7 @@ def controlOutputs():
             buttons[17].state = False
     else: 
         GPIO.output(23, GPIO.HIGH)
-    """
-    """
+
     # 
     # Control DockLight
     #
@@ -457,7 +454,6 @@ def controlOutputs():
         GPIO.output(24, GPIO.LOW)
     else:
         GPIO.output(24, GPIO.HIGH)
-    """
 
 def sendLightValue():
     global testMode
@@ -897,15 +893,15 @@ while not done:
     drawFunctions()
 
     sendLightValue()
+    
+    controlOutputs()
 
     pygame.display.flip()
     my_clock.tick(30)
 
 # on exit
-"""
 GPIO.output(22, GPIO.HIGH)
 GPIO.output(23, GPIO.HIGH)
 GPIO.output(24, GPIO.HIGH)
 GPIO.output(25, GPIO.HIGH)
-"""
 pygame.quit()

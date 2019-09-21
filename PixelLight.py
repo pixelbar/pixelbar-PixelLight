@@ -4,7 +4,8 @@ import pygame
 import os
 import socket
 import psutil
-import RPi.GPIO as GPIO
+import datetime
+#import RPi.GPIO as GPIO
 from random import randint
 
 pygame.init()
@@ -27,17 +28,16 @@ manOverride = [0, 0, 0, 0]
 spaceState = False
 spaceArr = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 spaceCtr = 0
-cpuUse = 0
-cpuClk = 0
-memUse1 = 0
-memUse2 = 0
-sdCard1 = 0
-sdCard2 = 0
-cpuTemp = 'temp'
 testMode = False
 errCnt = 0
 master = 0
+tempReadEn = True
+spaceTemp = 0
+deg_sym = '°'
+timeNow = 0
+timeLast = 0
 
+"""
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(22, GPIO.OUT) # relais 1 FrontDoor
@@ -48,6 +48,7 @@ GPIO.output(22, GPIO.HIGH)
 GPIO.output(23, GPIO.HIGH)
 GPIO.output(24, GPIO.HIGH)
 GPIO.output(25, GPIO.HIGH)
+"""
 
 frontDoorTrig = False
 frontDoorTimer = 5000
@@ -84,8 +85,8 @@ size = [windowSizeX, windowSizeY]
 screen = pygame.display.set_mode(size, pygame.NOFRAME)
 pygame.display.flip()
 my_clock = pygame.time.Clock()
-pygame.display.set_caption("Lampjes")
-pygame.mouse.set_visible(False)
+pygame.display.set_caption("PixelbarManagementSystem")
+#pygame.mouse.set_visible(False)
 
 font = pygame.font.SysFont('Arial', 50, False, False)
 
@@ -108,11 +109,6 @@ class light(object):
         self.x = x
         self.y = y
 
-lights.append(light(0, 'Door', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 0 * 250, lightY))
-lights.append(light(1, 'Kitchen', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 1 * 250, lightY))
-lights.append(light(2, 'Stairs', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 2 * 250, lightY))
-lights.append(light(3, 'Beamer', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 3 * 250, lightY))
-
 class button(object):
     def __init__(self, id, text, x, y, width, height, state):
         self.id = id
@@ -123,26 +119,419 @@ class button(object):
         self.height = height
         self.state = state
 
-varX = 200
-varY = 80
-buttons.append(button(0, 'Pim', buttonX + 0 * varX, buttonY + 0 * varY, 190, 70, False))
-buttons.append(button(1, 'Courtisane', buttonX + 0 * varX, buttonY + 1 * varY, 190, 70, False))
-buttons.append(button(2, 'Off', buttonX + 0 * varX, buttonY + 2 * varY, 190, 70, False))
-buttons.append(button(3, 'Deselect all', buttonX + 1 * varX, buttonY + 0 * varY, 190, 70, False))
-buttons.append(button(4, 'Unicorn', buttonX + 1 * varX, buttonY + 1 * varY, 190, 70, False))
-buttons.append(button(5, 'Random', buttonX + 2 * varX, buttonY + 1 * varY, 190, 70, False))
-buttons.append(button(6, 'TestMode', buttonX + 0 * varX, buttonY + 6 * varY, 190, 70, True))
-buttons.append(button(7, '0.0.0.0', lights[0].x - 10, lightY + 330, 192, 60, False))
-buttons.append(button(8, '0.0.0.0', lights[1].x - 10, lightY + 330, 192, 60, False))
-buttons.append(button(9, '0.0.0.0', lights[2].x - 10, lightY + 330, 192, 60, False))
-buttons.append(button(10, '0.0.0.0', lights[3].x - 10, lightY + 330, 192, 60, False))
-buttons.append(button(11, 'Spare', 100, 5000, 190, 70, False))  
-buttons.append(button(12, 'Door', lights[0].x - 10, lightY, 192, 60, False))
-buttons.append(button(13, 'Kitchen', lights[1].x - 10, lightY, 192, 60, False))
-buttons.append(button(14, 'Stairs', lights[2].x - 10, lightY, 192, 60, False))
-buttons.append(button(15, 'Beamer', lights[3].x - 10, lightY, 192, 60, False))
-buttons.append(button(16, 'FrontDoor', 1030, 865, 190, 70, False))
-buttons.append(button(17, 'PixelDoor', 280, 540, 190, 70, False))
+def createLights():
+    lights.append(light(0, 'Door', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 0 * 250, lightY))
+    lights.append(light(1, 'Kitchen', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 1 * 250, lightY))
+    lights.append(light(2, 'Stairs', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 2 * 250, lightY))
+    lights.append(light(3, 'Beamer', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 3 * 250, lightY))
+
+def createButtons():
+    varX = 200
+    varY = 80
+    buttons.append(button(0, 'Pim', buttonX + 0 * varX, buttonY + 0 * varY, 190, 70, False))
+    buttons.append(button(1, 'Courtisane', buttonX + 0 * varX, buttonY + 1 * varY, 190, 70, False))
+    buttons.append(button(2, 'Off', buttonX + 0 * varX, buttonY + 2 * varY, 190, 70, False))
+    buttons.append(button(3, 'Deselect all', buttonX + 1 * varX, buttonY + 0 * varY, 190, 70, False))
+    buttons.append(button(4, 'Unicorn', buttonX + 1 * varX, buttonY + 1 * varY, 190, 70, False))
+    buttons.append(button(5, 'Random', buttonX + 2 * varX, buttonY + 1 * varY, 190, 70, False))
+    buttons.append(button(6, 'TestMode', buttonX + 0 * varX, buttonY + 6 * varY, 190, 70, True))
+    buttons.append(button(7, '0.0.0.0', lights[0].x - 10, lightY + 330, 192, 60, False))
+    buttons.append(button(8, '0.0.0.0', lights[1].x - 10, lightY + 330, 192, 60, False))
+    buttons.append(button(9, '0.0.0.0', lights[2].x - 10, lightY + 330, 192, 60, False))
+    buttons.append(button(10, '0.0.0.0', lights[3].x - 10, lightY + 330, 192, 60, False))
+    buttons.append(button(11, 'Spare', 100, 5000, 190, 70, False))
+    buttons.append(button(12, 'Door', lights[0].x - 10, lightY, 192, 60, False))
+    buttons.append(button(13, 'Kitchen', lights[1].x - 10, lightY, 192, 60, False))
+    buttons.append(button(14, 'Stairs', lights[2].x - 10, lightY, 192, 60, False))
+    buttons.append(button(15, 'Beamer', lights[3].x - 10, lightY, 192, 60, False))
+    buttons.append(button(16, 'FrontDoor', 1030, 865, 190, 70, False))
+    buttons.append(button(17, 'PixelDoor', 280, 540, 190, 70, False))
+
+def drawFunctions():
+    global spaceState
+
+    varX = 35
+    varY = 10
+    font = pygame.font.SysFont('Arial', 35, False, False)
+    text = font.render("Light control", False, GREEN)
+    screen.blit(text, [varX, varY])
+
+    pygame.draw.line(screen, GREEN, [0, varY + 45], [varX - 10, varY + 45], 1)
+    pygame.draw.line(screen, GREEN, [varX - 10, varY + 45], [varX - 10, 5], 1)
+    pygame.draw.line(screen, GREEN, [varX - 10, varY + 45], [varX - 10, 5], 1)
+    pygame.draw.line(screen, GREEN, [varX - 10, 5], [varX + text.get_rect().width + 10, 5], 1)
+    pygame.draw.line(screen, GREEN, [varX + text.get_rect().width + 10, 5],
+                     [varX + text.get_rect().width + 10, varY + 45], 1)
+    if master == 0:
+        pygame.draw.line(screen, GREEN, [varX + text.get_rect().width + 10, varY + 45], [windowSizeX, varY + 45], 1)
+    else:
+        pygame.draw.line(screen, GREEN, [varX - 10, varY + 45], [varX + text.get_rect().width + 25, varY + 45], 1)
+
+    text = font.render("Access control", False, GREEN)
+    divX = 225
+    screen.blit(text, [varX + divX, varY])
+    pygame.draw.line(screen, GREEN, [varX + divX - 10, 5], [varX + divX + text.get_rect().width + 10, 5], 1)
+    pygame.draw.line(screen, GREEN, [varX + divX + text.get_rect().width + 10, 5],
+                     [varX + divX + text.get_rect().width + 10, varY + 45], 1)
+    pygame.draw.line(screen, GREEN, [varX + divX - 10, 5], [varX + divX - 10, varY + 45], 1)
+    if master == 1:
+        pygame.draw.line(screen, GREEN, [0, varY + 45], [varX + divX - 10, varY + 45], 1)
+        pygame.draw.line(screen, GREEN, [varX + divX + text.get_rect().width + 10, varY + 45], [windowSizeX, varY + 45],
+                         1)
+    else:
+        pygame.draw.line(screen, GREEN, [varX + divX - 26, varY + 45], [varX + divX + 252, varY + 45], 1)
+
+    text = font.render("Settings", False, GREEN)
+    divX = 487
+    screen.blit(text, [varX + divX, varY])
+    pygame.draw.line(screen, GREEN, [varX + divX - 10, 5], [varX + divX + text.get_rect().width + 10, 5], 1)
+    pygame.draw.line(screen, GREEN, [varX + divX + text.get_rect().width + 10, 5],
+                     [varX + divX + text.get_rect().width + 10, varY + 45], 1)
+    pygame.draw.line(screen, GREEN, [varX + divX - 10, 5], [varX + divX - 10, varY + 45], 1)
+    if master == 2:
+        pygame.draw.line(screen, GREEN, [0, varY + 45], [varX + divX - 10, varY + 45], 1)
+    else:
+        pygame.draw.line(screen, GREEN, [varX + divX - 26, varY + 45], [varX + divX + 252, varY + 45], 1)
+    pygame.draw.line(screen, GREEN, [varX + divX + text.get_rect().width + 10, varY + 45], [windowSizeX, varY + 45], 1)
+
+    text = font.render("Exit", False, GREEN)
+    screen.blit(text, [varX + 1700, varY])
+    pygame.draw.line(screen, GREEN, [varX + 1700 - 10, 5], [varX + 1700 - 10, varY + 45], 1)
+    pygame.draw.line(screen, GREEN, [varX + 1700 - 10, 5], [varX + 1700 + text.get_rect().width + 10, 5], 1)
+    pygame.draw.line(screen, GREEN, [varX + 1700 + text.get_rect().width + 10, 5],
+                     [varX + 1700 + text.get_rect().width + 10, varY + 45], 1)
+
+    if spaceState:
+        text = font.render("Space is Open", False, GREEN)
+    else:
+        text = font.render("Space is Closed", False, RED)
+    screen.blit(text, [varX + 750, varY])
+
+def drawLights():
+    for i in range(len(lights)):
+        varTop = 60
+        varLength = varTop + 200 + 39 - 20
+
+        pygame.draw.line(screen, GREEN, [lights[i].x + 10, lights[i].y + varTop + 20],
+                         [lights[i].x + 10, lights[i].y + varLength + 10], 1)
+        pygame.draw.line(screen, GREEN, [lights[i].x + 60, lights[i].y + varTop + 20],
+                         [lights[i].x + 60, lights[i].y + varLength + 10], 1)
+        pygame.draw.line(screen, GREEN, [lights[i].x + 110, lights[i].y + varTop + 20],
+                         [lights[i].x + 110, lights[i].y + varLength + 10], 1)
+        pygame.draw.line(screen, GREEN, [lights[i].x + 160, lights[i].y + varTop + 20],
+                         [lights[i].x + 160, lights[i].y + varLength + 10], 1)
+        pygame.draw.rect(screen, BLACK, [lights[i].x - 10, lights[i].y + varLength - lights[i].tarRed * 2, 41, 15])
+        pygame.draw.rect(screen, BLACK, [lights[i].x + 40, lights[i].y + varLength - lights[i].tarGreen * 2, 41, 15])
+        pygame.draw.rect(screen, BLACK, [lights[i].x + 90, lights[i].y + varLength - lights[i].tarBlue * 2, 41, 15])
+        pygame.draw.rect(screen, BLACK, [lights[i].x + 140, lights[i].y + varLength - lights[i].tarWhite * 2, 41, 15])
+        pygame.draw.rect(screen, GREEN, [lights[i].x - 10, lights[i].y + varLength - lights[i].tarRed * 2, 41, 15], 1)
+        pygame.draw.rect(screen, GREEN, [lights[i].x + 40, lights[i].y + varLength - lights[i].tarGreen * 2, 41, 15], 1)
+        pygame.draw.rect(screen, GREEN, [lights[i].x + 90, lights[i].y + varLength - lights[i].tarBlue * 2, 41, 15], 1)
+        pygame.draw.rect(screen, GREEN, [lights[i].x + 140, lights[i].y + varLength - lights[i].tarWhite * 2, 41, 15],
+                         1)
+        pygame.draw.rect(screen, RED, [lights[i].x - 10, lights[i].y + varLength - lights[i].red * 2, 41, 15], 1)
+        pygame.draw.rect(screen, RED, [lights[i].x + 40, lights[i].y + varLength - lights[i].green * 2, 41, 15], 1)
+        pygame.draw.rect(screen, RED, [lights[i].x + 90, lights[i].y + varLength - lights[i].blue * 2, 41, 15], 1)
+        pygame.draw.rect(screen, RED, [lights[i].x + 140, lights[i].y + varLength - lights[i].white * 2, 41, 15], 1)
+
+        font = pygame.font.SysFont('Arial', 25, False, False)
+        if selZone[i] == 1 or selZone[i] == 2:
+            buttons[i + 12].state = True
+        else:
+            buttons[i + 12].state = False
+
+        font = pygame.font.SysFont('Arial', 20, False, False)
+        text = font.render("R", False, GREEN)
+        screen.blit(text, [lights[i].x - text.get_rect().width / 2 + 10, lights[i].y + 300])
+        text = font.render("G", False, GREEN)
+        screen.blit(text, [lights[i].x - text.get_rect().width / 2 + 60, lights[i].y + 300])
+        text = font.render("B", False, GREEN)
+        screen.blit(text, [lights[i].x - text.get_rect().width / 2 + 110, lights[i].y + 300])
+        text = font.render("W", False, GREEN)
+        screen.blit(text, [lights[i].x - text.get_rect().width / 2 + 160, lights[i].y + 300])
+
+    #
+    # Draw buttons
+    #
+    font = pygame.font.SysFont('Arial', 30, False, False)
+    for i in range(0, 16):
+        if buttons[i].state == False:
+            pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height], 1)
+            text = font.render(buttons[i].text, False, GREEN)
+        else:
+            pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height])
+            text = font.render(buttons[i].text, False, BLACK)
+        screen.blit(text, [buttons[i].x + round(buttons[i].width / 2) - text.get_rect().width / 2,
+                           buttons[i].y + round(buttons[i].height / 2) - text.get_rect().height / 2])
+
+    if iwab:
+        text = font.render("Smart-Ass mode activated", False, RED)
+        screen.blit(text, [((buttonX + windowSizeX - (2 * buttonX)) / 2) - (text.get_rect().width / 2), buttonY + 85])
+
+    text = font.render("Speed", False, GREEN)
+    screen.blit(text, [buttonX + 95 - text.get_rect().width / 2, buttonY + 280])
+    pygame.draw.line(screen, GREEN, [buttonX, buttonY + 350], [buttonX + 209, buttonY + 350], 1)
+    pygame.draw.rect(screen, BLACK, [buttonX + (speedCur * 2), buttonY + 330, 15, 40])
+    pygame.draw.rect(screen, GREEN, [buttonX + (speedCur * 2), buttonY + 330, 15, 40], 1)
+
+def drawDoor():
+    global spaceTemp
+    #
+    # Draw buttons
+    #
+    font = pygame.font.SysFont('Arial', 30, False, False)
+    for i in range(16, 18):
+        if buttons[i].state == False:
+            pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height], 1)
+            text = font.render(buttons[i].text, False, GREEN)
+        else:
+            pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height])
+            text = font.render(buttons[i].text, False, BLACK)
+        screen.blit(text, [buttons[i].x + round(buttons[i].width / 2) - text.get_rect().width / 2,
+                           buttons[i].y + round(buttons[i].height / 2) - text.get_rect().height / 2])
+
+    #
+    # Draw map
+    #
+    x = 500
+    y = 250
+    pygame.draw.line(screen, GREEN, [x + 500, y - 150], [x + 500, y - 175], 1)
+    pygame.draw.line(screen, GREEN, [x + 490, y - 150], [x + 510, y - 150], 1)
+    pygame.draw.line(screen, GREEN, [x + 475, y - 75], [x + 525, y - 125], 1)
+    pygame.draw.line(screen, GREEN, [x + 475, y - 125], [x + 525, y - 75], 1)
+    pygame.draw.line(screen, GREEN, [x + 490, y - 50], [x + 510, y - 50], 1)
+    pygame.draw.line(screen, GREEN, [x + 500, y], [x + 500, y - 50], 1)
+    pygame.draw.line(screen, GREEN, [x + 500, y], [x + 250, y], 1)
+    pygame.draw.line(screen, GREEN, [x + 250, y], [x + 250, y + 250], 1)
+    pygame.draw.line(screen, GREEN, [x + 250, y + 250], [x, y + 250], 1)
+    pygame.draw.line(screen, GREEN, [x, y + 250], [x, y + 275], 1)
+    pygame.draw.line(screen, GREEN, [x - 10, y + 275], [x + 10, y + 275], 1)
+    pygame.draw.line(screen, GREEN, [x - 10, y + 375], [x + 10, y + 375], 1)
+    pygame.draw.line(screen, GREEN, [x, y + 375], [x, y + 550], 1)
+    pygame.draw.line(screen, GREEN, [x, y + 550], [x + 500, y + 550], 1)
+    pygame.draw.line(screen, GREEN, [x + 500, y + 550], [x + 500, y + 600], 1)
+    pygame.draw.line(screen, GREEN, [x + 490, y + 600], [x + 510, y + 600], 1)
+    pygame.draw.line(screen, GREEN, [x + 490, y + 700], [x + 510, y + 700], 1)
+    pygame.draw.line(screen, GREEN, [x + 500, y + 700], [x + 500, y + 800], 1)
+    pygame.draw.line(screen, GREEN, [x + 500, y], [x + 500, y + 600], 1)
+    font = pygame.font.SysFont('Arial', 35, True, False)
+    text = font.render("Pixelbar", False, GREEN)
+    screen.blit(text, [x + 200, y + 350])
+
+    #5
+    # Draw temperature
+    #
+
+    text = font.render(str(spaceTemp) + " " + deg_sym + "C", False, GREEN)
+    screen.blit(text, [x + 200, y + 400])
+
+def getLightValues():
+    global connError
+
+    if not testMode and not mouseDown:
+        connError = False
+        URLget = "http://172.30.101.101:1234/api/serial"
+        try:
+            r = requests.get(URLget, timeout=0.5)
+
+        except: # requests.exceptions.Timeout:
+            connError = True
+
+        if not connError:
+            connError = False
+            response = r.json()
+            lights[0].red = response['door']['red']
+            lights[0].green = response['door']['green']
+            lights[0].blue = response['door']['blue']
+            lights[0].white = response['door']['white']
+            lights[1].red = response['kitchen']['red']
+            lights[1].green = response['kitchen']['green']
+            lights[1].blue = response['kitchen']['blue']
+            lights[1].white = response['kitchen']['white']
+            lights[2].red = response['stairs']['red']
+            lights[2].green = response['stairs']['green']
+            lights[2].blue = response['stairs']['blue']
+            lights[2].white = response['stairs']['white']
+            lights[3].red = response['beamer']['red']
+            lights[3].green = response['beamer']['green']
+            lights[3].blue = response['beamer']['blue']
+            lights[3].white = response['beamer']['white']
+
+        if connError:
+            font = pygame.font.SysFont('Arial', 30, False, False)
+            text = font.render(str("Geen verbinding met de server"), False, RED)
+            screen.blit(text, [510, 515])
+
+def getSpaceState():
+    global spaceState
+    global spaceCtr
+    global door
+
+    connError2 = False
+
+    URL2get = "https://spacestate.pixelbar.nl/spacestate.php"
+
+    try:
+        r2 = requests.get(URL2get, timeout=0.5)
+
+    except: # requests.exceptions.Timeout: # except:  #
+        connError2 = True
+        door = 0
+
+    if not connError2:
+        responseState = r2.json()
+
+        spaceCtr += 1
+        if spaceCtr > 9:
+            spaceCtr = 0
+
+        if responseState['state'] == 'open':
+            spaceArr[spaceCtr] = 1
+        else:
+            spaceArr[spaceCtr] = 0
+
+    tempState = 0
+    for i in range(len(spaceArr)):
+        if spaceArr[i] == 1:
+            tempState += 1
+
+    if tempState > 8:
+        spaceState = True
+    else:
+        spaceState = False
+
+def getSpaceTemp():
+    global tempReadEn
+    global spaceTemp
+
+    tempReadEn = False
+    connError3 = False
+    URL3get = "http://172.30.101.2:8080/temp.json"
+
+    try:
+        r3 = requests.get(URL3get, timeout=0.5)
+
+    except: # requests.exceptions.Timeout:  # except:  #
+        connError3 = True
+
+    if not connError3:
+        jsonCont = r3.json()
+
+    spaceTemp = jsonCont['AccelTemp']
+
+    print("spaceTemp uitgelezen")
+
+def controlOutputs():
+    global frontDoorTrig
+    global pixelDoorTrig
+    global spaceState
+    """
+    # 
+    # Control doors
+    #
+    if frontDoorTrig:
+        if pygame.time.get_ticks() < frontDoorTime + frontDoorTimer:
+            buttons[16].state = True
+            GPIO.output(22, GPIO.LOW)
+        else:
+            frontDoorTrig = False
+            buttons[16].state = False
+    else: 
+        GPIO.output(22, GPIO.HIGH)
+
+    if pixelDoorTrig:
+        if pygame.time.get_ticks() < pixelDoorTime + pixelDoorTimer:
+            buttons[17].state = True
+            GPIO.output(23, GPIO.LOW)
+        else:
+            pixelDoorTrig = False
+            buttons[17].state = False
+    else: 
+        GPIO.output(23, GPIO.HIGH)
+    """
+    """
+    # 
+    # Control DockLight
+    #
+    if spaceState:
+        GPIO.output(24, GPIO.LOW)
+    else:
+        GPIO.output(24, GPIO.HIGH)
+    """
+
+def sendLightValue():
+    global testMode
+    global connError
+
+    if not testMode and not connError:
+        if mode == 4 or mode == 5:
+            URLset = "http://172.30.101.101:1234/api/set"
+            HEAD = {'content-type': 'application/json'}
+            DATA = {'door': {'red': lights[0].tarRed, 'green': lights[0].tarGreen, 'blue': lights[0].tarBlue, 'white': lights[0].tarWhite},
+                    'stairs': {'red': lights[2].tarRed, 'green': lights[2].tarGreen, 'blue': lights[2].tarBlue, 'white': lights[2].tarWhite},
+                    'beamer': {'red': lights[3].tarRed, 'green': lights[3].tarGreen, 'blue': lights[3].tarBlue, 'white': lights[3].tarWhite},
+                    'kitchen': {'red': lights[1].tarRed, 'green': lights[1].tarGreen, 'blue': lights[1].tarBlue, 'white': lights[1].tarWhite},}
+
+            r = requests.post(URLset, data=json.dumps(DATA), headers=HEAD)
+        else:
+            if mouseDown:
+                URLset = "http://172.30.101.101:1234/api/set"
+                HEAD = {'content-type': 'application/json'}
+                DATA = {'door': {'red': lights[0].tarRed, 'green': lights[0].tarGreen, 'blue': lights[0].tarBlue, 'white': lights[0].tarWhite},
+                        'stairs': {'red': lights[2].tarRed, 'green': lights[2].tarGreen, 'blue': lights[2].tarBlue, 'white': lights[2].tarWhite},
+                        'beamer': {'red': lights[3].tarRed, 'green': lights[3].tarGreen, 'blue': lights[3].tarBlue, 'white': lights[3].tarWhite},
+                        'kitchen': {'red': lights[1].tarRed, 'green': lights[1].tarGreen, 'blue': lights[1].tarBlue, 'white': lights[1].tarWhite}, }
+
+                r = requests.post(URLset, data=json.dumps(DATA), headers=HEAD)
+
+def getPiInfo():
+    global ip_address
+
+    cpuUse = 0
+    cpuClk = 0
+    memUse1 = 0
+    memUse2 = 0
+    sdCard1 = 0
+    sdCard2 = 0
+    cpuTemp = 'temp'
+
+    font = pygame.font.SysFont('Arial', 30, False, False)
+    # get IP
+    ip_address = '';
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip_address = s.getsockname()[0]
+    s.close()
+
+    # get CPU en mem usage
+    if pygame.time.get_ticks() % 100 == 0:
+        cpuUse = psutil.cpu_percent(interval=0.5)
+        memUse1 = psutil.virtual_memory().percent
+        memUse2 = (psutil.virtual_memory().total - psutil.virtual_memory().available) / 1048567
+        sdCard1 = psutil.disk_usage('/').percent
+        sdCard2 = psutil.disk_usage('/').used / 1073741824
+        temp = os.popen('vcgencmd measure_temp').readline()
+        cpuTemp = temp.replace("temp=", "").replace("'C\n", "")
+        cpuClk = psutil.cpu_freq().current
+
+    varX = 35
+    varY = 75
+    text = font.render("IP-adres: " + str(ip_address), False, GREEN)
+    screen.blit(text, [varX, varY + 0 * 35])
+    text = font.render("CPU-usage: " + str(cpuUse) + "%", False, GREEN)
+    screen.blit(text, [varX, varY + 1 * 35])
+    text = font.render("CPU-clock: " + str(cpuClk) + " MHz", False, GREEN)
+    screen.blit(text, [varX, varY + 2 * 35])
+    text = font.render("CPU temp: " + str(cpuTemp) + " 'C", False, GREEN)
+    screen.blit(text, [varX, varY + 3 * 35])
+    text = font.render("mem-usage: " + str(memUse1) + "% (" + str(round(memUse2, 2)) + " Mb)", False, GREEN)
+    screen.blit(text, [varX, varY + 4 * 35])
+    text = font.render("SD-card: " + str(sdCard1) + "% (" + str(round(sdCard2, 2)) + " Gb)", False, GREEN)
+    screen.blit(text, [varX, varY + 5 * 35])
+
+createLights()
+
+createButtons()
 
 done = False
 
@@ -210,55 +599,11 @@ while not done:
                                 elif i == 17:
                                     pixelDoorTrig = True
                                     pixelDoorTime = pygame.time.get_ticks()
-                                    
+
     screen.fill(BLACK)
-    
-    #
-    # Check spaceState
-    #
-    
-    
-    connError2 = False
-    
-    URL2get = "https://spacestate.pixelbar.nl/spacestate.php"
-    
-    try:
-        r2 = requests.get(URL2get, timeout=0.5)
-    
-    except: #except requests.exceptions.Timeout:
-        connError2 = True
-        door = 0
-        
-    if not connError2:
-        responseState = r2.json()
-        
-        spaceCtr += 1
-        if spaceCtr > 9:
-            spaceCtr = 0
-            
-        if responseState['state'] == 'open':
-            spaceArr[spaceCtr] = 1
-        else:
-            spaceArr[spaceCtr] = 0
-    
-    tempState = 0
-    for i in range(len(spaceArr)):
-        if spaceArr[i] == 1:
-            tempState += 1
-    
-    if tempState > 8:
-        text = font.render("Space is Open", False, GREEN)
-        spaceState = True
-    else:
-        text = font.render("Space is Closed", False, RED)
-        spaceState = False
-    screen.blit(text, [750, 10])
-    
-    if spaceState:
-        GPIO.output(24, GPIO.LOW)
-    else:
-        GPIO.output(24, GPIO.HIGH)
-    
+
+    getSpaceState()
+
     #
     # If a mousebutton is pressed check is an action is required
     #
@@ -293,8 +638,6 @@ while not done:
                         if newVar < 0:
                             newVar = 0
                         lights[i].tarTempRed = newVar
-                        #text = font.render("tarTempRed: " + str(newVar), False, BLUE)
-                        #screen.blit(text, [500, 500])
                 elif mouseCurX > lights[i].x + 40 and mouseCurX < lights[i].x + 81:
                     if mouseCurY > lights[i].y + 80 and mouseCurY < lights[i].y + 80 + 200:
                         mode = 3
@@ -342,76 +685,12 @@ while not done:
             for i in range(len(selZone)):
                 if selZone[i] == 2:
                     selZone[i] = 0
+
     #
     # Set relais to control the doors
     #
-    if frontDoorTrig:
-        if pygame.time.get_ticks() < frontDoorTime + frontDoorTimer:
-            buttons[16].state = True
-            GPIO.output(22, GPIO.LOW)
-        else:
-            frontDoorTrig = False
-            buttons[16].state = False
-    else: 
-        GPIO.output(22, GPIO.HIGH)
-    
-    if pixelDoorTrig:
-        if pygame.time.get_ticks() < pixelDoorTime + pixelDoorTimer:
-            buttons[17].state = True
-            GPIO.output(23, GPIO.LOW)
-        else:
-            pixelDoorTrig = False
-            buttons[17].state = False
-    else: 
-        GPIO.output(23, GPIO.HIGH)
-    
-    """
-    if buttons[16].state == True:
-        GPIO.output(22, GPIO.LOW)
-    else:
-        GPIO.output(22, GPIO.HIGH)
-    
-    if buttons[17].state == True:
-        GPIO.output(23, GPIO.LOW)
-    else:
-        GPIO.output(23, GPIO.HIGH)
-    """
-    #
-    # Get information from server
-    #
-    if not testMode and not mouseDown:
-        connError = False
-        URLget = "http://172.30.101.101:1234/api/serial"
-        try:
-            r = requests.get(URLget, timeout=0.5)
 
-        except requests.exceptions.Timeout:
-            connError = True
-            
-        if not connError:
-            connError = False
-            response = r.json()
-            lights[0].red = response['door']['red']
-            lights[0].green = response['door']['green']
-            lights[0].blue = response['door']['blue']
-            lights[0].white = response['door']['white']
-            lights[1].red = response['kitchen']['red']
-            lights[1].green = response['kitchen']['green']
-            lights[1].blue = response['kitchen']['blue']
-            lights[1].white = response['kitchen']['white']
-            lights[2].red = response['stairs']['red']
-            lights[2].green = response['stairs']['green']
-            lights[2].blue = response['stairs']['blue']
-            lights[2].white = response['stairs']['white']
-            lights[3].red = response['beamer']['red']
-            lights[3].green = response['beamer']['green']
-            lights[3].blue = response['beamer']['blue']
-            lights[3].white = response['beamer']['white']
-
-        if connError:
-            font = pygame.font.SysFont('Arial', 30, False, False)
-            text = font.render(str("Geen verbinding met de server"), False, RED)
-            screen.blit(text, [510, 515])
+    getLightValues()
 
     #
     # calculate animation speed
@@ -595,236 +874,38 @@ while not done:
                 lights[i].tarWhite = 0
 
     #
-    # Draw values on screen
+    # Draw screen
     #
     if master == 0:
-        for i in range(len(lights)):
-            varTop = 60
-            varLength = varTop + 200 + 39 - 20
-            
-            pygame.draw.line(screen, GREEN, [lights[i].x + 10, lights[i].y + varTop + 20], [lights[i].x + 10, lights[i].y + varLength + 10], 1)
-            pygame.draw.line(screen, GREEN, [lights[i].x + 60, lights[i].y + varTop + 20], [lights[i].x + 60, lights[i].y + varLength + 10], 1)
-            pygame.draw.line(screen, GREEN, [lights[i].x + 110, lights[i].y + varTop + 20], [lights[i].x + 110, lights[i].y + varLength + 10], 1)
-            pygame.draw.line(screen, GREEN, [lights[i].x + 160, lights[i].y + varTop + 20], [lights[i].x + 160, lights[i].y + varLength + 10], 1)
-            pygame.draw.rect(screen, BLACK, [lights[i].x - 10, lights[i].y + varLength - lights[i].tarRed * 2, 41, 15])
-            pygame.draw.rect(screen, BLACK, [lights[i].x + 40, lights[i].y + varLength - lights[i].tarGreen * 2, 41, 15])
-            pygame.draw.rect(screen, BLACK, [lights[i].x + 90, lights[i].y + varLength - lights[i].tarBlue * 2, 41, 15])
-            pygame.draw.rect(screen, BLACK, [lights[i].x + 140, lights[i].y + varLength - lights[i].tarWhite * 2, 41, 15])
-            pygame.draw.rect(screen, GREEN, [lights[i].x - 10, lights[i].y + varLength - lights[i].tarRed * 2, 41, 15], 1)
-            pygame.draw.rect(screen, GREEN, [lights[i].x + 40, lights[i].y + varLength - lights[i].tarGreen * 2, 41, 15], 1)
-            pygame.draw.rect(screen, GREEN, [lights[i].x + 90, lights[i].y + varLength - lights[i].tarBlue * 2, 41, 15], 1)
-            pygame.draw.rect(screen, GREEN, [lights[i].x + 140, lights[i].y + varLength - lights[i].tarWhite * 2, 41, 15], 1)
-            pygame.draw.rect(screen, RED, [lights[i].x - 10, lights[i].y + varLength - lights[i].red * 2, 41, 15], 1)
-            pygame.draw.rect(screen, RED, [lights[i].x + 40, lights[i].y + varLength - lights[i].green * 2, 41, 15], 1)
-            pygame.draw.rect(screen, RED, [lights[i].x + 90, lights[i].y + varLength - lights[i].blue * 2, 41, 15], 1)
-            pygame.draw.rect(screen, RED, [lights[i].x + 140, lights[i].y + varLength - lights[i].white * 2, 41, 15], 1)
-
-            font = pygame.font.SysFont('Arial', 25, False, False)
-            if selZone[i] == 1 or selZone[i] == 2:
-                buttons[i + 12].state = True
-            else:
-                buttons[i + 12].state = False
-
-            font = pygame.font.SysFont('Arial', 20, False, False)
-            text = font.render("R", False, GREEN)
-            screen.blit(text, [lights[i].x - text.get_rect().width / 2 + 10, lights[i].y + 300])
-            text = font.render("G", False, GREEN)
-            screen.blit(text, [lights[i].x - text.get_rect().width / 2 + 60, lights[i].y + 300])
-            text = font.render("B", False, GREEN)
-            screen.blit(text, [lights[i].x - text.get_rect().width / 2 + 110, lights[i].y + 300])
-            text = font.render("W", False, GREEN)
-            screen.blit(text, [lights[i].x - text.get_rect().width / 2 + 160, lights[i].y + 300])
-        
-        #
-        # Draw buttons
-        #
-        font = pygame.font.SysFont('Arial', 30, False, False)
-        for i in range(0, 16):
-            if buttons[i].state == False:
-                pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height], 1)
-                text = font.render(buttons[i].text, False, GREEN)
-            else:
-                pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height])
-                text = font.render(buttons[i].text, False, BLACK)
-            screen.blit(text, [buttons[i].x + round(buttons[i].width / 2) - text.get_rect().width / 2, buttons[i].y + round(buttons[i].height / 2) - text.get_rect().height / 2])
-
-        if iwab:
-            text = font.render("Smart-Ass mode activated", False, RED)
-            screen.blit(text, [((buttonX + windowSizeX - (2 * buttonX)) / 2) - (text.get_rect().width / 2), buttonY + 85])
-
-        text = font.render("Speed", False, GREEN)
-        screen.blit(text, [buttonX + 95 - text.get_rect().width / 2, buttonY + 280])
-        pygame.draw.line(screen, GREEN, [buttonX, buttonY + 350], [buttonX + 209, buttonY + 350], 1)
-        pygame.draw.rect(screen, BLACK, [buttonX + (speedCur * 2), buttonY + 330, 15, 40])
-        pygame.draw.rect(screen, GREEN, [buttonX + (speedCur * 2), buttonY + 330, 15, 40], 1)
+        drawLights()
     
     elif master == 1:
-        #
-        # Draw buttons
-        #
-        font = pygame.font.SysFont('Arial', 30, False, False)
-        for i in range(16, 18):
-            if buttons[i].state == False:
-                pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height], 1)
-                text = font.render(buttons[i].text, False, GREEN)
-            else:
-                pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height])
-                text = font.render(buttons[i].text, False, BLACK)
-            screen.blit(text, [buttons[i].x + round(buttons[i].width / 2) - text.get_rect().width / 2, buttons[i].y + round(buttons[i].height / 2) - text.get_rect().height / 2])
-                  
-        #
-        # Draw map
-        #
-        x = 500
-        y = 250
-        pygame.draw.line(screen, GREEN, [x + 500, y - 150], [x + 500, y - 175], 1)
-        pygame.draw.line(screen, GREEN, [x + 490, y - 150], [x + 510, y - 150], 1)
-        pygame.draw.line(screen, GREEN, [x + 475, y - 75], [x + 525, y - 125], 1)
-        pygame.draw.line(screen, GREEN, [x + 475, y - 125], [x + 525, y - 75], 1) 
-        pygame.draw.line(screen, GREEN, [x + 490, y - 50], [x + 510, y - 50], 1)
-        pygame.draw.line(screen, GREEN, [x + 500, y], [x + 500, y - 50], 1)
-        pygame.draw.line(screen, GREEN, [x + 500, y], [x + 250, y], 1)
-        pygame.draw.line(screen, GREEN, [x + 250, y], [x + 250, y + 250], 1)
-        pygame.draw.line(screen, GREEN, [x + 250, y + 250], [x, y + 250], 1)
-        pygame.draw.line(screen, GREEN, [x, y + 250], [x, y + 275], 1)
-        pygame.draw.line(screen, GREEN, [x - 10, y + 275], [x + 10, y + 275], 1)
-        pygame.draw.line(screen, GREEN, [x - 10, y + 375], [x + 10, y + 375], 1)
-        pygame.draw.line(screen, GREEN, [x, y + 375], [x, y + 550], 1)
-        pygame.draw.line(screen, GREEN, [x, y + 550], [x + 500, y + 550], 1)
-        pygame.draw.line(screen, GREEN, [x + 500, y + 550], [x + 500, y + 600], 1)
-        pygame.draw.line(screen, GREEN, [x + 490, y + 600], [x + 510, y + 600], 1)
-        pygame.draw.line(screen, GREEN, [x + 490, y + 700], [x + 510, y + 700], 1)
-        pygame.draw.line(screen, GREEN, [x + 500, y + 700], [x + 500, y + 800], 1)
-        pygame.draw.line(screen, GREEN, [x + 500, y], [x + 500, y + 600], 1)
-        font = pygame.font.SysFont('Arial', 35, True, False)
-        text = font.render("Pixelbar", False, GREEN)
-        screen.blit(text, [x + 200, y + 350])
-        
-        #
-        # Draw temperature
-        #
-        
-        text = font.render("temp", False, GREEN)
-        screen.blit(text, [x + 225, y + 400])
+        drawDoor()
+
+        timeNow = datetime.datetime.now().minute
+        if round(datetime.datetime.now().minute % 10) == 0:
+            if timeNow != timeLast:
+                timeLast = timeNow
+                tempReadEn = True
+
+        if tempReadEn:
+            getSpaceTemp()
         
     elif master == 2:
-        font = pygame.font.SysFont('Arial', 30, False, False)
-        # get IP
-        ip_address = '';
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip_address = s.getsockname()[0]
-        s.close()
+        getPiInfo()
         
-        # get CPU en mem usage
-        
-        if pygame.time.get_ticks() % 100 == 0:
-            cpuUse = psutil.cpu_percent(interval=0.5)
-            memUse1 = psutil.virtual_memory().percent
-            memUse2 = (psutil.virtual_memory().total - psutil.virtual_memory().available) / 1048567
-            sdCard1 = psutil.disk_usage('/').percent
-            sdCard2 = psutil.disk_usage('/').used / 1073741824
-            temp = os.popen('vcgencmd measure_temp').readline()
-            cpuTemp = temp.replace("temp=", "").replace("'C\n", "")
-            cpuClk = psutil.cpu_freq().current
-            
-        varX = 35
-        varY = 75
-        text = font.render("IP-adres: " + str(ip_address), False, GREEN)
-        screen.blit(text, [varX, varY + 0 * 35])
-        text = font.render("CPU-usage: " + str(cpuUse) + "%", False, GREEN)
-        screen.blit(text, [varX, varY + 1 * 35])
-        text = font.render("CPU-clock: " + str(cpuClk) + " MHz", False, GREEN)
-        screen.blit(text, [varX, varY + 2 * 35])
-        text = font.render("CPU temp: " + str(cpuTemp) + " 'C", False, GREEN)
-        screen.blit(text, [varX, varY + 3 * 35])
-        text = font.render("mem-usage: " + str(memUse1) + "% (" + str(round(memUse2, 2)) + " Mb)", False, GREEN)
-        screen.blit(text, [varX, varY + 4 * 35])
-        text = font.render("SD-card: " + str(sdCard1) + "% (" + str(round(sdCard2, 2)) + " Gb)", False, GREEN)
-        screen.blit(text, [varX, varY + 5 * 35])
-        
-        
-    #
-    # Draw functionallities
-    #
-    
-    varX = 35
-    varY = 10
-    font = pygame.font.SysFont('Arial', 35, False, False)
-    text = font.render("Light control", False, GREEN)
-    screen.blit(text, [varX, varY])
-    
-    pygame.draw.line(screen, GREEN, [0, varY + 45], [varX - 10, varY + 45], 1)
-    pygame.draw.line(screen, GREEN, [varX - 10, varY + 45], [varX - 10, 5], 1)
-    pygame.draw.line(screen, GREEN, [varX - 10, varY + 45], [varX - 10, 5], 1)
-    pygame.draw.line(screen, GREEN, [varX - 10, 5], [varX + text.get_rect().width + 10, 5], 1)
-    pygame.draw.line(screen, GREEN, [varX + text.get_rect().width + 10, 5], [varX + text.get_rect().width + 10, varY + 45], 1)
-    if master == 0:
-        pygame.draw.line(screen, GREEN, [varX + text.get_rect().width + 10, varY + 45], [windowSizeX, varY + 45], 1)
-    else:
-        pygame.draw.line(screen, GREEN, [varX - 10, varY + 45], [varX + text.get_rect().width + 25, varY + 45], 1)
-    
-    text = font.render("Access control", False, GREEN)
-    divX = 225
-    screen.blit(text, [varX + divX, varY])
-    pygame.draw.line(screen, GREEN, [varX + divX - 10, 5], [varX + divX + text.get_rect().width + 10, 5], 1)
-    pygame.draw.line(screen, GREEN, [varX + divX + text.get_rect().width + 10, 5], [varX + divX + text.get_rect().width + 10, varY + 45], 1)
-    pygame.draw.line(screen, GREEN, [varX + divX - 10, 5], [varX + divX - 10, varY + 45], 1)
-    if master == 1:
-        pygame.draw.line(screen, GREEN, [0, varY + 45], [varX + divX - 10, varY + 45], 1)
-        pygame.draw.line(screen, GREEN, [varX + divX + text.get_rect().width + 10, varY + 45], [windowSizeX, varY + 45], 1)
-    else:
-        pygame.draw.line(screen, GREEN, [varX + divX - 26, varY + 45], [varX + divX + 252, varY + 45], 1)
-    
-    text = font.render("Settings", False, GREEN)
-    divX = 487
-    screen.blit(text, [varX + divX, varY])
-    pygame.draw.line(screen, GREEN, [varX + divX - 10, 5], [varX + divX + text.get_rect().width + 10, 5], 1)
-    pygame.draw.line(screen, GREEN, [varX + divX + text.get_rect().width + 10, 5], [varX + divX + text.get_rect().width + 10, varY + 45], 1)
-    pygame.draw.line(screen, GREEN, [varX + divX - 10, 5], [varX + divX - 10, varY + 45], 1)
-    if master == 2:
-        pygame.draw.line(screen, GREEN, [0, varY + 45], [varX + divX - 10, varY + 45], 1)
-    else:
-        pygame.draw.line(screen, GREEN, [varX + divX - 26, varY + 45], [varX + divX + 252, varY + 45], 1)
-    pygame.draw.line(screen, GREEN, [varX + divX + text.get_rect().width + 10, varY + 45], [windowSizeX, varY + 45], 1)
-        
-    text = font.render("Exit", False, GREEN)
-    screen.blit(text, [varX + 1700, varY])
-    pygame.draw.line(screen, GREEN, [varX + 1700 - 10, 5], [varX + 1700 - 10, varY + 45], 1)
-    pygame.draw.line(screen, GREEN, [varX + 1700 - 10, 5], [varX + 1700 + text.get_rect().width + 10, 5], 1)
-    pygame.draw.line(screen, GREEN, [varX + 1700 + text.get_rect().width + 10, 5], [varX + 1700 + text.get_rect().width + 10, varY + 45], 1)
-    
-    #
-    # Send target values to server
-    #
-    
-    if not testMode and not connError:
-        if mode == 4 or mode == 5:
-            URLset = "http://172.30.101.101:1234/api/set"
-            HEAD = {'content-type': 'application/json'}
-            DATA = {'door': {'red': lights[0].tarRed, 'green': lights[0].tarGreen, 'blue': lights[0].tarBlue, 'white': lights[0].tarWhite},
-                    'stairs': {'red': lights[2].tarRed, 'green': lights[2].tarGreen, 'blue': lights[2].tarBlue, 'white': lights[2].tarWhite},
-                    'beamer': {'red': lights[3].tarRed, 'green': lights[3].tarGreen, 'blue': lights[3].tarBlue, 'white': lights[3].tarWhite},
-                    'kitchen': {'red': lights[1].tarRed, 'green': lights[1].tarGreen, 'blue': lights[1].tarBlue, 'white': lights[1].tarWhite},}
+    drawFunctions()
 
-            r = requests.post(URLset, data=json.dumps(DATA), headers=HEAD)
-        else:
-            if mouseDown:
-                URLset = "http://172.30.101.101:1234/api/set"
-                HEAD = {'content-type': 'application/json'}
-                DATA = {'door': {'red': lights[0].tarRed, 'green': lights[0].tarGreen, 'blue': lights[0].tarBlue, 'white': lights[0].tarWhite},
-                        'stairs': {'red': lights[2].tarRed, 'green': lights[2].tarGreen, 'blue': lights[2].tarBlue, 'white': lights[2].tarWhite},
-                        'beamer': {'red': lights[3].tarRed, 'green': lights[3].tarGreen, 'blue': lights[3].tarBlue, 'white': lights[3].tarWhite},
-                        'kitchen': {'red': lights[1].tarRed, 'green': lights[1].tarGreen, 'blue': lights[1].tarBlue, 'white': lights[1].tarWhite}, }
-
-                r = requests.post(URLset, data=json.dumps(DATA), headers=HEAD)
+    sendLightValue()
 
     pygame.display.flip()
     my_clock.tick(30)
 
 # on exit
+"""
 GPIO.output(22, GPIO.HIGH)
 GPIO.output(23, GPIO.HIGH)
 GPIO.output(24, GPIO.HIGH)
 GPIO.output(25, GPIO.HIGH)
+"""
 pygame.quit()

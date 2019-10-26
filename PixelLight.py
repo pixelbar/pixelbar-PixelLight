@@ -42,7 +42,7 @@ GPIO.setwarnings(False)
 GPIO.setup(22, GPIO.OUT) # relais 1 FrontDoor
 GPIO.setup(23, GPIO.OUT) # relais 2 PixelDoor
 GPIO.setup(24, GPIO.OUT) # relais 3 DockLight
-GPIO.setup(25, GPIO.OUT) # relais 4 Spare
+GPIO.setup(25, GPIO.OUT) # relais 4
 GPIO.output(22, GPIO.HIGH)
 GPIO.output(23, GPIO.HIGH)
 GPIO.output(24, GPIO.HIGH)
@@ -118,12 +118,15 @@ class button(object):
         self.state = state
 
 def createLights():
+
     lights.append(light(0, 'Door', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 0 * 250, lightY))
     lights.append(light(1, 'Kitchen', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 1 * 250, lightY))
     lights.append(light(2, 'Stairs', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 2 * 250, lightY))
     lights.append(light(3, 'Beamer', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 3 * 250, lightY))
 
 def createButtons():
+    global buttonX
+    global buttonY
     varX = 200
     varY = 80
     buttons.append(button(0, 'Pim', buttonX + 0 * varX, buttonY + 0 * varY, 190, 70, False))
@@ -144,6 +147,7 @@ def createButtons():
     buttons.append(button(15, 'Beamer', lights[3].x - 10, lightY, 192, 60, False))
     buttons.append(button(16, 'FrontDoor', 1030, 865, 190, 70, False))
     buttons.append(button(17, 'PixelDoor', 280, 540, 190, 70, False))
+    buttons.append(button(18, 'Popcorn', buttonX + 1 * varX, buttonY + 2 * varY, 190, 70, False))
 
 def drawFunctions():
     global spaceState
@@ -253,7 +257,7 @@ def drawLights():
     #
     font = pygame.font.SysFont('Arial', 30, False, False)
     for i in range(0, 16):
-        if buttons[i].state == False:
+        if not buttons[i].state:
             pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height], 1)
             text = font.render(buttons[i].text, False, GREEN)
         else:
@@ -261,6 +265,16 @@ def drawLights():
             text = font.render(buttons[i].text, False, BLACK)
         screen.blit(text, [buttons[i].x + round(buttons[i].width / 2) - text.get_rect().width / 2,
                            buttons[i].y + round(buttons[i].height / 2) - text.get_rect().height / 2])
+
+    i = 18
+    if not buttons[i].state:
+        pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height], 1)
+        text = font.render(buttons[i].text, False, GREEN)
+    else:
+        pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height])
+        text = font.render(buttons[i].text, False, BLACK)
+    screen.blit(text, [buttons[i].x + round(buttons[i].width / 2) - text.get_rect().width / 2,
+                       buttons[i].y + round(buttons[i].height / 2) - text.get_rect().height / 2])
 
     if iwab:
         text = font.render("Smart-Ass mode activated", False, RED)
@@ -315,12 +329,14 @@ def drawDoor():
     font = pygame.font.SysFont('Arial', 35, True, False)
     text = font.render("Pixelbar", False, GREEN)
     screen.blit(text, [x + 200, y + 350])
-
+ 
     #
-    # Draw temperature
+    # Draw temperature g
     #
-
-    text = font.render(str(spaceTemp) + " " + deg_sym + "C", False, GREEN)
+    if spaceTemp != 0:
+        text = font.render(str(spaceTemp) + " " + deg_sym + "C", False, GREEN)
+    else:
+        text = font.render("Pim is stuk", False, GREEN)
     screen.blit(text, [x + 200, y + 400])
 
 def getLightValues():
@@ -402,20 +418,21 @@ def getSpaceTemp():
     global tempReadEn
     global spaceTemp
 
+    spaceTemp = 0
+    
     tempReadEn = False
     connError3 = False
     URL3get = "http://172.30.101.2:8080/temp.json"
 
     try:
-        r3 = requests.get(URL3get, timeout=0.5)
+        r3 = requests.get(URL3get, timeout=2)
 
     except: # requests.exceptions.Timeout:  # except:  #
         connError3 = True
 
     if not connError3:
         jsonCont = r3.json()
-
-    spaceTemp = jsonCont['AccelTemp']
+        spaceTemp = jsonCont['AccelTemp']
 
     print("spaceTemp uitgelezen")
 
@@ -423,7 +440,7 @@ def controlOutputs():
     global frontDoorTrig
     global pixelDoorTrig
     global spaceState
-
+    
     # 
     # Control doors
     #
@@ -446,7 +463,7 @@ def controlOutputs():
             buttons[17].state = False
     else: 
         GPIO.output(23, GPIO.HIGH)
-
+   
     # 
     # Control DockLight
     #
@@ -454,6 +471,7 @@ def controlOutputs():
         GPIO.output(24, GPIO.LOW)
     else:
         GPIO.output(24, GPIO.HIGH)
+    
 
 def sendLightValue():
     global testMode
@@ -529,6 +547,8 @@ createLights()
 
 createButtons()
 
+getSpaceTemp()
+
 done = False
 
 while not done:
@@ -585,6 +605,9 @@ while not done:
                                         speedCur = 100
                                     elif mode == 5:
                                         speedCur = 1
+                    if pos[0] > buttons[18].x and pos[0] < buttons[18].x + buttons[18].width:
+                        if pos[1] > buttons[18].y and pos[1] < buttons[18].y + buttons[18].height:
+                            mode = 6
                 elif master == 1:
                     for i in range(16, 18):
                         if pos[0] > buttons[i].x and pos[0] < buttons[i].x + buttons[i].width:
@@ -682,10 +705,6 @@ while not done:
                 if selZone[i] == 2:
                     selZone[i] = 0
 
-    #
-    # Set relais to control the doors
-    #
-
     getLightValues()
 
     #
@@ -699,6 +718,7 @@ while not done:
     #
     for i in range(0, 16):
         buttons[i].state = False
+    buttons[18].state = False
 
     buttons[6].state = testMode
 
@@ -822,6 +842,26 @@ while not done:
                 lights[i].tarTempGreen = randint(1, 100)
                 lights[i].tarTempBlue = randint(1, 100)
                 lights[i].tarTempWhite = randint(1, 50)
+    elif mode == 6:  # Popcorn time
+        buttons[18].state = True
+        unicorn = False
+        iwab = False
+        lights[0].tarTempRed = 100
+        lights[0].tarTempGreen = 20
+        lights[0].tarTempBlue = 0
+        lights[0].tarTempWhite = 100
+        lights[1].tarTempRed = 50
+        lights[1].tarTempGreen = 10
+        lights[1].tarTempBlue = 0
+        lights[1].tarTempWhite = 50
+        lights[2].tarTempRed = 50
+        lights[2].tarTempGreen = 10
+        lights[2].tarTempBlue = 0
+        lights[2].tarTempWhite = 50
+        lights[3].tarTempRed = 0
+        lights[3].tarTempGreen = 0
+        lights[3].tarTempBlue = 0
+        lights[3].tarTempWhite = 0
 
     #
     # Change buttonstate from override switches
@@ -884,8 +924,8 @@ while not done:
                 timeLast = timeNow
                 tempReadEn = True
 
-        if tempReadEn:
-            getSpaceTemp()
+        #if tempReadEn:
+        #    getSpaceTemp()
         
     elif master == 2:
         getPiInfo()
@@ -900,8 +940,10 @@ while not done:
     my_clock.tick(30)
 
 # on exit
+
 GPIO.output(22, GPIO.HIGH)
 GPIO.output(23, GPIO.HIGH)
 GPIO.output(24, GPIO.HIGH)
 GPIO.output(25, GPIO.HIGH)
+
 pygame.quit()

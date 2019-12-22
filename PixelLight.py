@@ -5,6 +5,9 @@ import os
 import socket
 import psutil
 import datetime
+import requests
+from  bs4 import BeautifulSoup
+import time
 import RPi.GPIO as GPIO
 from random import randint
 
@@ -32,7 +35,8 @@ testMode = False
 errCnt = 0
 master = 0
 tempReadEn = True
-spaceTemp = 0
+spaceTempD = 0
+spaceTempU = 0
 deg_sym = '°'
 timeNow = 0
 timeLast = 0
@@ -118,7 +122,6 @@ class button(object):
         self.state = state
 
 def createLights():
-
     lights.append(light(0, 'Door', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 0 * 250, lightY))
     lights.append(light(1, 'Kitchen', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 1 * 250, lightY))
     lights.append(light(2, 'Stairs', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lightX + 2 * 250, lightY))
@@ -287,7 +290,8 @@ def drawLights():
     pygame.draw.rect(screen, GREEN, [buttonX + (speedCur * 2), buttonY + 330, 15, 40], 1)
 
 def drawDoor():
-    global spaceTemp
+    global spaceTempD
+    global spaceTempU
     #
     # Draw buttons
     #
@@ -331,13 +335,18 @@ def drawDoor():
     screen.blit(text, [x + 200, y + 350])
  
     #
-    # Draw temperature g
+    # Draw temperature
     #
-    if spaceTemp != 0:
-        text = font.render(str(spaceTemp) + " " + deg_sym + "C", False, GREEN)
+    if spaceTempD != 0:
+        text = font.render(str(spaceTempD) + " " + deg_sym + "C", False, GREEN)
     else:
         text = font.render("Pim is stuk", False, GREEN)
     screen.blit(text, [x + 200, y + 400])
+    if spaceTempU != 0:
+        text = font.render(str(spaceTempU) + " " + deg_sym + "C", False, GREEN)
+    else:
+        text = font.render("Jim is stuk", False, GREEN)
+    screen.blit(text, [x + 200, y + 300])
 
 def getLightValues():
     global connError
@@ -414,13 +423,12 @@ def getSpaceState():
     else:
         spaceState = False
 
-def getSpaceTemp():
+def getSpaceTempDown():
     global tempReadEn
-    global spaceTemp
+    global spaceTempD
 
-    spaceTemp = 0
+    spaceTempD = 0
     
-    tempReadEn = False
     connError3 = False
     URL3get = "http://172.30.101.2:8080/temp.json"
 
@@ -432,9 +440,25 @@ def getSpaceTemp():
 
     if not connError3:
         jsonCont = r3.json()
-        spaceTemp = jsonCont['AccelTemp']
+        spaceTempD = jsonCont['AccelTemp']
 
-    print("spaceTemp uitgelezen")
+def getSpaceTempUp():
+    global spaceTempU
+    spaceTempU = 0
+    url = 'http://172.30.31.190/'
+    connError4 = False
+    
+    try:
+        page = requests.get(url)
+        
+    except:
+        connError4 = True
+    
+    if not connError4:
+        soup = BeautifulSoup(page.text, "html.parser")
+        temp = soup.get_text()
+        spaceTempU = float(temp[-7:])
+        print(spaceTempU)
 
 def controlOutputs():
     global frontDoorTrig
@@ -547,7 +571,9 @@ createLights()
 
 createButtons()
 
-getSpaceTemp()
+getSpaceTempDown()
+
+getSpaceTempUp()
 
 done = False
 
@@ -759,7 +785,8 @@ while not done:
         speedCnt += 1
         if speedCnt > 100:
             speedCnt = 1
-
+        
+        countVal = 5
         if speedCnt % speed == 0:
             for i in range(len(lights)):
                 lights[i].tarTempWhite = 0
@@ -767,7 +794,7 @@ while not done:
                 for i in range(len(lights)):
                     lights[i].tarTempGreen = 0
                     lights[i].tarTempBlue = 0
-                valRGB += 1
+                valRGB += countVal
                 for i in range(len(lights)):
                     lights[i].tarTempRed = valRGB
                 if valRGB > 100:
@@ -777,7 +804,7 @@ while not done:
                 for i in range(len(lights)):
                     lights[i].tarTempRed = 100
                     lights[i].tarTempBlue = 0
-                valRGB += 1
+                valRGB += countVal
                 for i in range(len(lights)):
                     lights[i].tarTempGreen = valRGB
                 if valRGB > 100:
@@ -786,7 +813,7 @@ while not done:
                 for i in range(len(lights)):
                     lights[i].tarTempGreen = 100
                     lights[i].tarTempBlue = 0
-                valRGB -= 1
+                valRGB -= countVal
                 for i in range(len(lights)):
                     lights[i].tarTempRed = valRGB
                 if valRGB < 0:
@@ -795,7 +822,7 @@ while not done:
                 for i in range(len(lights)):
                     lights[i].tarTempGreen = 100
                     lights[i].tarTempRed = 0
-                valRGB += 1
+                valRGB += countVal
                 for i in range(len(lights)):
                     lights[i].tarTempBlue = valRGB
                 if valRGB > 100:
@@ -804,7 +831,7 @@ while not done:
                 for i in range(len(lights)):
                     lights[i].tarTempBlue = 100
                     lights[i].tarTempRed = 0
-                valRGB -= 1
+                valRGB -= countVal
                 for i in range(len(lights)):
                     lights[i].tarTempGreen = valRGB
                 if valRGB < 0:
@@ -813,7 +840,7 @@ while not done:
                 for i in range(len(lights)):
                     lights[i].tarTempBlue = 100
                     lights[i].tarTempGreen = 0
-                valRGB += 1
+                valRGB += countVal
                 for i in range(len(lights)):
                     lights[i].tarTempRed = valRGB
                 if valRGB > 100:
@@ -822,7 +849,7 @@ while not done:
                 for i in range(len(lights)):
                     lights[i].tarTempRed = 100
                     lights[i].tarTempGreen = 0
-                valRGB -= 1
+                valRGB -= countVal
                 for i in range(len(lights)):
                     lights[i].tarTempBlue = valRGB
                 if valRGB < 0:
@@ -922,10 +949,8 @@ while not done:
         if round(datetime.datetime.now().minute % 10) == 0:
             if timeNow != timeLast:
                 timeLast = timeNow
-                tempReadEn = True
-
-        #if tempReadEn:
-        #    getSpaceTemp()
+                getSpaceTempUp()
+                getSpaceTempDown()
         
     elif master == 2:
         getPiInfo()

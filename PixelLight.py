@@ -353,7 +353,7 @@ def getLightValues():
 
     if not testMode and not mouseDown:
         connError = False
-        URLget = "http://172.30.101.101:1234/api/serial"
+        URLget = "http://127.0.0.1:1234/api/serial"
         try:
             r = requests.get(URLget, timeout=0.5)
 
@@ -503,7 +503,7 @@ def sendLightValue():
 
     if not testMode and not connError:
         if mode == 4 or mode == 5:
-            URLset = "http://172.30.101.101:1234/api/set"
+            URLset = "http://127.0.0.1:1234/api/set"
             HEAD = {'content-type': 'application/json'}
             DATA = {'door': {'red': lights[0].tarRed, 'green': lights[0].tarGreen, 'blue': lights[0].tarBlue, 'white': lights[0].tarWhite},
                     'stairs': {'red': lights[2].tarRed, 'green': lights[2].tarGreen, 'blue': lights[2].tarBlue, 'white': lights[2].tarWhite},
@@ -513,12 +513,13 @@ def sendLightValue():
             r = requests.post(URLset, data=json.dumps(DATA), headers=HEAD)
         else:
             if mouseDown:
-                URLset = "http://172.30.101.101:1234/api/set"
+                URLset = "http://127.0.0.1:1234/api/set"
                 HEAD = {'content-type': 'application/json'}
                 DATA = {'door': {'red': lights[0].tarRed, 'green': lights[0].tarGreen, 'blue': lights[0].tarBlue, 'white': lights[0].tarWhite},
                         'stairs': {'red': lights[2].tarRed, 'green': lights[2].tarGreen, 'blue': lights[2].tarBlue, 'white': lights[2].tarWhite},
                         'beamer': {'red': lights[3].tarRed, 'green': lights[3].tarGreen, 'blue': lights[3].tarBlue, 'white': lights[3].tarWhite},
                         'kitchen': {'red': lights[1].tarRed, 'green': lights[1].tarGreen, 'blue': lights[1].tarBlue, 'white': lights[1].tarWhite}, }
+
 
                 r = requests.post(URLset, data=json.dumps(DATA), headers=HEAD)
 

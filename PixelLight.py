@@ -132,10 +132,10 @@ def createButtons():
     global buttonY
     varX = 200
     varY = 80
-    buttons.append(button(0, 'Pim', buttonX + 0 * varX, buttonY + 0 * varY, 190, 70, False))
+    buttons.append(button(0, 'Pim', buttonX + 1 * varX, buttonY + 0 * varY, 190, 70, False))
     buttons.append(button(1, 'Courtisane', buttonX + 0 * varX, buttonY + 1 * varY, 190, 70, False))
     buttons.append(button(2, 'Off', buttonX + 0 * varX, buttonY + 2 * varY, 190, 70, False))
-    buttons.append(button(3, 'Deselect all', buttonX + 1 * varX, buttonY + 0 * varY, 190, 70, False))
+    buttons.append(button(3, 'Deselect all', lightX + 4 * 250, lightY, 190, 70, False))
     buttons.append(button(4, 'Unicorn', buttonX + 1 * varX, buttonY + 1 * varY, 190, 70, False))
     buttons.append(button(5, 'Random', buttonX + 2 * varX, buttonY + 1 * varY, 190, 70, False))
     buttons.append(button(6, 'TestMode', buttonX + 0 * varX, buttonY + 6 * varY, 190, 70, True))
@@ -151,6 +151,7 @@ def createButtons():
     buttons.append(button(16, 'FrontDoor', 1030, 865, 190, 70, False))
     buttons.append(button(17, 'PixelDoor', 280, 540, 190, 70, False))
     buttons.append(button(18, 'Popcorn', buttonX + 1 * varX, buttonY + 2 * varY, 190, 70, False))
+    buttons.append(button(19, 'Bright', buttonX + 0 * varX, buttonY + 0 * varY, 190, 70, False))
 
 def drawFunctions():
     global spaceState
@@ -269,15 +270,15 @@ def drawLights():
         screen.blit(text, [buttons[i].x + round(buttons[i].width / 2) - text.get_rect().width / 2,
                            buttons[i].y + round(buttons[i].height / 2) - text.get_rect().height / 2])
 
-    i = 18
-    if not buttons[i].state:
-        pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height], 1)
-        text = font.render(buttons[i].text, False, GREEN)
-    else:
-        pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height])
-        text = font.render(buttons[i].text, False, BLACK)
-    screen.blit(text, [buttons[i].x + round(buttons[i].width / 2) - text.get_rect().width / 2,
-                       buttons[i].y + round(buttons[i].height / 2) - text.get_rect().height / 2])
+    for i in [18, 19]:
+        if not buttons[i].state:
+            pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height], 1)
+            text = font.render(buttons[i].text, False, GREEN)
+        else:
+            pygame.draw.rect(screen, GREEN, [buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height])
+            text = font.render(buttons[i].text, False, BLACK)
+        screen.blit(text, [buttons[i].x + round(buttons[i].width / 2) - text.get_rect().width / 2,
+                           buttons[i].y + round(buttons[i].height / 2) - text.get_rect().height / 2])
 
     if iwab:
         text = font.render("Smart-Ass mode activated", False, RED)
@@ -590,7 +591,7 @@ while not done:
                 pos = pygame.mouse.get_pos()
 
                 if master == 0:
-                    for i in range(0, 16):
+                    for i in list(range(0, 16)) + [19]:
                         if pos[0] > buttons[i].x and pos[0] < buttons[i].x + buttons[i].width:
                             if pos[1] > buttons[i].y and pos[1] < buttons[i].y + buttons[i].height:
                                 if buttons[i].id == 3:      # Deselect all
@@ -746,6 +747,7 @@ while not done:
     for i in range(0, 16):
         buttons[i].state = False
     buttons[18].state = False
+    buttons[19].state = False
 
     buttons[6].state = testMode
 
@@ -890,6 +892,15 @@ while not done:
         lights[3].tarTempGreen = 0
         lights[3].tarTempBlue = 0
         lights[3].tarTempWhite = 0
+    elif mode == 19:  # Full brightness
+        buttons[19].state = True
+        unicorn = False
+        iwab = False
+        for i in range(len(lights)):
+            lights[i].tarTempRed = 100
+            lights[i].tarTempGreen = 100
+            lights[i].tarTempBlue = 100
+            lights[i].tarTempWhite = 100
 
     #
     # Change buttonstate from override switches

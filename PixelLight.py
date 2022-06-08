@@ -871,7 +871,7 @@ while not done:
                 lights[i].tarTempRed = randint(1, 100)
                 lights[i].tarTempGreen = randint(1, 100)
                 lights[i].tarTempBlue = randint(1, 100)
-                lights[i].tarTempWhite = randint(1, 50)
+                lights[i].tarTempWhite = 0
     elif mode == 6:  # Popcorn time
         buttons[18].state = True
         unicorn = False

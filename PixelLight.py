@@ -92,6 +92,16 @@ pygame.mouse.set_visible(False)
 
 font = pygame.font.SysFont('Arial', 50, False, False)
 
+ip_address = ''
+cpuUse = 0
+cpuClk = 0
+memUse1 = 0
+memUse2 = 0
+sdCard1 = 0
+sdCard2 = 0
+cpuTemp = 'temp'
+
+
 class light(object):
     def __init__(self, id, zone, red, green, blue, white, tarRed, tarGreen, tarBlue, tarWhite, tarTempRed, tarTempGreen, tarTempBlue, tarTempWhite, x, y):
         self.id = id
@@ -526,25 +536,18 @@ def sendLightValue():
 
 def getPiInfo():
     global ip_address
-
-    cpuUse = 0
-    cpuClk = 0
-    memUse1 = 0
-    memUse2 = 0
-    sdCard1 = 0
-    sdCard2 = 0
-    cpuTemp = 'temp'
+    global cpuUse, memUse1, memUse2, sdCard1, sdCard2, cpuTemp, cpuClk
 
     font = pygame.font.SysFont('Arial', 30, False, False)
     # get IP
-    ip_address = '';
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80))
-    ip_address = s.getsockname()[0]
-    s.close()
+    if not ip_address:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip_address = s.getsockname()[0]
+        s.close()
 
     # get CPU en mem usage
-    if pygame.time.get_ticks() % 100 == 0:
+    if pygame.time.get_ticks() % 100 == 0 or not cpuClk:
         cpuUse = psutil.cpu_percent(interval=0.5)
         memUse1 = psutil.virtual_memory().percent
         memUse2 = (psutil.virtual_memory().total - psutil.virtual_memory().available) / 1048567

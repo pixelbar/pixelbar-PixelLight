@@ -441,7 +441,7 @@ def getSpaceTempDown():
     spaceTempD = 0
     
     connError3 = False
-    URL3get = "http://172.30.101.2:8080/temp.json"
+    URL3get = "http://127.0.0.1:8080/temp.json"
 
     try:
         r3 = requests.get(URL3get, timeout=2)

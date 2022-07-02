@@ -1,4 +1,5 @@
 import requests
+import simplejson.errors
 import json
 import pygame
 import os
@@ -449,9 +450,14 @@ def getSpaceTempDown():
     except: # requests.exceptions.Timeout:  # except:  #
         connError3 = True
 
-    if not connError3:
+    if connError3:
+        return
+
+    try:
         jsonCont = r3.json()
         spaceTempD = jsonCont['AccelTemp']
+    except simplejson.errors.JSONDecodeError:
+        pass
 
 def getSpaceTempUp():
     global spaceTempU

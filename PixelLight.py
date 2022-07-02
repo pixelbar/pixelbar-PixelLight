@@ -5,7 +5,6 @@ import pygame
 import os
 import socket
 import psutil
-import datetime
 import requests
 from  bs4 import BeautifulSoup
 import time
@@ -39,8 +38,9 @@ tempReadEn = True
 spaceTempD = 0
 spaceTempU = 0
 deg_sym = '°'
-timeNow = 0
-timeLast = 0
+timeLastTemperatures = 0
+timeLastSpaceState = 0
+timeLastLights = 0
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
@@ -658,8 +658,6 @@ while not done:
 
     screen.fill(BLACK)
 
-    getSpaceState()
-
     #
     # If a mousebutton is pressed check is an action is required
     #
@@ -742,8 +740,6 @@ while not done:
                 if selZone[i] == 2:
                     selZone[i] = 0
 
-    getLightValues()
-
     #
     # calculate animation speed
     #
@@ -797,7 +793,7 @@ while not done:
         speedCnt += 1
         if speedCnt > 100:
             speedCnt = 1
-        
+
         countVal = 5
         if speedCnt % speed == 0:
             for i in range(len(lights)):
@@ -957,29 +953,41 @@ while not done:
                 lights[i].tarBlue = 0
                 lights[i].tarWhite = 0
 
+
+    timeNow = time.monotonic()
+    if (timeNow - timeLastSpaceState) > 10:
+        # get space state every 10 seconds
+        timeLastSpaceState = timeNow
+        getSpaceState()
+
     #
     # Draw screen
     #
     if master == 0:
+        if (timeNow - timeLastLights) > 1:
+            timeLastLights = timeNow
+            getLightValues()
+
         drawLights()
-    
+
+
     elif master == 1:
+        if (timeNow - timeLastTemperatures) > 60:
+            # get temperatures every minute
+            timeLastTemperatures = timeNow
+            getSpaceTempUp()
+            getSpaceTempDown()
+
         drawDoor()
 
-        timeNow = datetime.datetime.now().minute
-        if round(datetime.datetime.now().minute % 10) == 0:
-            if timeNow != timeLast:
-                timeLast = timeNow
-                getSpaceTempUp()
-                getSpaceTempDown()
-        
+
     elif master == 2:
         getPiInfo()
-        
+
     drawFunctions()
 
     sendLightValue()
-    
+
     controlOutputs()
 
     pygame.display.flip()

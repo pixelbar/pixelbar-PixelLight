@@ -402,6 +402,7 @@ def getSpaceState():
     global spaceCtr
     global door
 
+    spaceState = False
     connError2 = False
 
     URL2get = "https://spacestate.pixelbar.nl/spacestate.php"
@@ -416,24 +417,9 @@ def getSpaceState():
     if not connError2:
         responseState = r2.json()
 
-        spaceCtr += 1
-        if spaceCtr > 9:
-            spaceCtr = 0
-
         if responseState['state'] == 'open':
-            spaceArr[spaceCtr] = 1
-        else:
-            spaceArr[spaceCtr] = 0
+            spaceState = True
 
-    tempState = 0
-    for i in range(len(spaceArr)):
-        if spaceArr[i] == 1:
-            tempState += 1
-
-    if tempState > 8:
-        spaceState = True
-    else:
-        spaceState = False
 
 def getSpaceTempDown():
     global tempReadEn
